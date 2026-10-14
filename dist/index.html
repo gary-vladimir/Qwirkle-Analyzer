@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7f9">
+  <title>Qwirkle Analyzer</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="header"><a class="brand" href="/" aria-label="Qwirkle Analyzer home"><span class="brand-icon">✣</span> Qwirkle<span class="brand-light">Analyzer</span></a><span class="local"><i></i> LOCAL WORKSPACE</span></header>
+  <main>
+    <div class="intro"><div><div class="eyebrow">A LITTLE CLARITY FOR YOUR NEXT TURN</div><h1>Make your best move.</h1><p>Recreate the table. Add your tiles. Find the most points.</p></div><button id="example" class="secondary">↗ Try an example</button></div>
+    <div class="workspace">
+      <aside class="sidebar">
+        <section class="panel palette-panel">
+          <div class="section-title"><h2><span class="step">1</span> Choose a tile</h2><button id="erase" class="text-button" aria-pressed="false">Eraser</button></div>
+          <p class="hint">Select below, then click a board square.</p>
+          <div id="palette" class="palette" aria-label="Tile palette"></div>
+          <div id="selected-label" class="selected-label"></div>
+        </section>
+        <section class="panel rack-panel">
+          <div class="section-title"><h2><span class="step">2</span> Your rack</h2><span id="rack-count" class="muted">0 / 6</span></div>
+          <p class="hint">Click an empty slot to add the selected tile.<br>Click a filled slot to remove it.</p>
+          <div id="rack" class="rack" aria-label="Your tiles"></div>
+          <label class="checkbox"><input id="bag-empty" type="checkbox"><span>The draw bag is empty</span><span class="info" title="Adds 6 points if the move uses your entire rack.">ⓘ</span></label>
+          <button id="analyze" class="primary">Find best move <span>→</span></button>
+          <p class="under-button">Every legal play. Highest score.</p>
+        </section>
+        <details class="rules"><summary>A quick rules refresher <span>+</span></summary><p>Lines share one color or one shape, with no duplicates and at most six tiles. Each turn adds tiles to a single connected line; existing tiles may sit between the new ones.</p><p>Score every tile in each line created or extended. A six-tile line earns 6 extra points. Emptying your rack when the bag is empty earns another 6.</p><p>On an empty board, play your largest matching set. The analyzer assumes you are the starting player.</p><a href="https://www.mindware.orientaltrading.com/pdf/instructions/32016.pdf" target="_blank" rel="noreferrer">Official MindWare rules ↗</a></details>
+      </aside>
+      <div class="main-column">
+        <section class="panel board-panel">
+          <div class="board-toolbar"><div><h2>The table <span id="board-count" class="pill">0 tiles</span></h2><p class="hint">Click to place · Right-click to remove</p></div><div class="board-actions"><button id="undo" title="Undo last edit" aria-label="Undo last edit">↶</button><button id="fit" title="Center board" aria-label="Center board">⌖</button><button id="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><button id="zoom-in" title="Zoom in" aria-label="Zoom in">+</button><button id="clear" class="clear-button">Clear</button></div></div>
+          <div id="board-viewport" class="board-viewport"><div id="board" class="board" aria-label="Board editor"></div></div>
+          <div class="board-footer"><span><i class="legend-existing"></i> On the table <i class="legend-new"></i> Suggested move</span><span>Scroll to explore the table</span></div>
+        </section>
+        <section id="results" class="panel results" aria-live="polite"></section>
+        <div id="status" class="status" role="status"></div>
+      </div>
+    </div>
+    <footer><span>Built for the next turn, not the whole game.</span><span>Saved in this browser · No accounts · No uploads</span></footer>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
