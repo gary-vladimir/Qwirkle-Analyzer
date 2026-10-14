@@ -49,14 +49,14 @@ h2 { font-size: 16px; letter-spacing: -.3px; display: flex; align-items: center;
 .tile-tool.active { border-color: #63926b; box-shadow: inset 0 0 0 1px #63926b; }
 #active-tile { width: 36px; flex-shrink: 0; }
 .tile-tool small { display: block; color: #6b7d62; font-size: 9px; letter-spacing: 1px; font-weight: 700; margin-bottom: 3px; }
-.tile-tool strong { display: block; font-size: 12px; font-weight: 650; }
+.tile-tool strong { overflow-wrap: anywhere; display: block; font-size: 12px; font-weight: 650; }
 .chevron { margin-left: auto; }
 .tool-button { width: 58px; flex-shrink: 0; border: 1px solid var(--line); background: white; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10px; }
 .tool-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .tool-button[aria-pressed="true"] { color: var(--green); background: #e9efdf; border-color: #75966c; }
 .board-stage { position: relative; border-block: 1px solid #dce3d5; }
 .board-viewport { height: 476px; overflow: auto; background: #edf1e6; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #bfceb8 transparent; }
-.board { --cell: 48px; display: grid; width: max-content; padding: 24px; background: #edf1e6; }
+.board { --cell: 48px; display: grid; width: max-content; padding: 24px; background: #edf1e6; user-select: none; }
 .cell { touch-action: auto; width: var(--cell); height: var(--cell); padding: 4px; border: 0; border-right: 1px solid #dce4d5; border-bottom: 1px solid #dce4d5; background: transparent; border-radius: 0; position: relative; display: grid; place-items: stretch; }
 .cell:active { transform: none !important; }
 .cell.origin:empty::after { content: '+'; position: absolute; inset: 0; display: grid; place-items: center; font-size: 24px; color: #849879; }
@@ -179,7 +179,7 @@ dialog h2 { font-size: 23px; letter-spacing: -.7px; }
   .intro p { font-size: 12px; margin-top: 8px; }
   .workspace { display: flex; flex-direction: column; gap: 16px; }
   .board-panel, .side-column { width: 100%; }
-  .board-viewport { height: clamp(260px, 42svh, 440px); }
+  .board-viewport { height: clamp(260px, 36svh, 400px); }
   .board-panel > .section-title { padding: 8px 16px 0; }
   .edit-tools { padding: 8px 14px 14px; }
   .tile-tool strong { font-size: 12px; }
@@ -194,8 +194,8 @@ dialog h2 { font-size: 23px; letter-spacing: -.7px; }
   .results { padding: 24px; }
   .result-empty { display: flex; align-items: center; text-align: left; gap: 16px; padding: 0; }
   .result-symbol { flex-shrink: 0; margin: 0; }
-  .placements { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
-  .placement { font-size: 11px; gap: 7px; }
+  .placements { gap: 12px; }
+  .placement { font-size: 12px; gap: 10px; }
   footer { flex-direction: column; gap: 8px; }
   dialog { margin: auto auto 0; width: 100%; max-width: 520px; max-height: calc(100dvh - 16px); border-radius: 24px 24px 0 0; padding: 12px 24px calc(24px + env(safe-area-inset-bottom)); }
   .sheet-handle { display: block; width: 36px; height: 4px; background: #d7ddcf; border-radius: 4px; margin: 0 auto 20px; }
@@ -212,12 +212,17 @@ dialog h2 { font-size: 23px; letter-spacing: -.7px; }
   #active-tile { width: 30px; }
   .tile-tool strong { font-size: 11px; }
   .rack-panel { padding-inline: 14px; }
-  .rack { gap: 4px; }
+  .rack { gap: 0; margin-inline: -8px; padding-inline: 0; }
+  .rack .tile { padding: 2px; }
   .results { padding: 18px; }
   .placements { grid-template-columns: 1fr; }
   dialog { padding-inline: 16px; }
   .colors { gap: 3px; }
   .color-button { padding-inline: 5px; }
+}
+@media (max-height: 500px) and (max-width: 1000px) {
+  .board-viewport { height: 280px; }
+  .intro { margin-bottom: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }

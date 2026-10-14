@@ -122,10 +122,15 @@ function fitBoard() {
 }
 function renderBoard(center = false) {
   const grid = $('board'), viewport = $('board-viewport'), placed = preview();
+  const hadFocus = grid.contains(document.activeElement);
+  let focusX = Number(grid.dataset.focusX || 0), focusY = Number(grid.dataset.focusY || 0);
   const all = [...board, ...placed];
   const xs = all.map(t => t.x), ys = all.map(t => t.y);
   const minX = Math.min(-7, ...xs.map(x => x - 6)), maxX = Math.max(7, ...xs.map(x => x + 6));
   const minY = Math.min(-6, ...ys.map(y => y - 6)), maxY = Math.max(6, ...ys.map(y => y + 6));
+  if (focusX < minX || focusX > maxX || focusY < minY || focusY > maxY) {
+    focusX = focusY = 0; grid.dataset.focusX = grid.dataset.focusY = '0';
+  }
   const oldMinX = Number(grid.dataset.minX ?? minX), oldMinY = Number(grid.dataset.minY ?? minY);
   const scrollLeft = viewport.scrollLeft + (oldMinX - minX) * cellSize, scrollTop = viewport.scrollTop + (oldMinY - minY) * cellSize;
   grid.dataset.minX = minX; grid.dataset.minY = minY;
@@ -141,10 +146,11 @@ function renderBoard(center = false) {
     button.title = `(${x}, ${y})${t ? ` · ${tileName(t)}` : ''}`;
     if (t) button.innerHTML = tileMarkup(t, suggestion?.number);
     // Arrow keys navigate the grid without hundreds of sequential tab stops.
-    button.tabIndex = !x && !y ? 0 : -1;
+    button.tabIndex = x === focusX && y === focusY ? 0 : -1;
     fragment.append(button);
   }
   grid.replaceChildren(fragment);
+  if (hadFocus) grid.querySelector('[tabindex="0"]')?.focus({ preventScroll: true });
   $('board-empty').hidden = all.length > 0;
   $('zoom-level').textContent = `${Math.round(cellSize / 48 * 100)}%`;
   $('zoom-in').disabled = cellSize >= 72;
@@ -205,9 +211,17 @@ function editCell(event, remove = false) {
   changed();
   $('board').querySelector(`[data-x="${x}"][data-y="${y}"]`)?.focus({ preventScroll: true });
 }
-$('board').onclick = event => editCell(event);
+$('board').addEventListener('focusin', event => {
+  const cell = event.target.closest('.cell'); if (!cell) return;
+  $('board').querySelector('[tabindex="0"]')?.setAttribute('tabindex', '-1');
+  cell.tabIndex = 0;
+  $('board').dataset.focusX = cell.dataset.x;
+  $('board').dataset.focusY = cell.dataset.y;
+});
+$('board').onclick = event => { if (!event.detail) suppressClick = false; editCell(event); };
 $('board').oncontextmenu = event => { event.preventDefault(); editCell(event, true); };
 $('board').onkeydown = event => {
+  suppressClick = false;
   const cell = event.target.closest('.cell'); if (!cell) return;
   if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); editCell(event, true); return; }
   const delta = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
@@ -277,10 +291,10 @@ $('analyze').onclick = () => {
   try {
     worker = new Worker('/worker.js', { type: 'module' });
     worker.onmessage = ({ data }) => { result = data; stopSearch(); renderResults(); fitBoard(); reveal('results'); };
-    worker.onerror = () => { stopSearch(); result = { errors: ['The search could not start. Reload the page and try again.'], moves: [] }; renderResults(); };
+    worker.onerror = () => { stopSearch(); result = { errors: ['The search could not start. Reload the page and try again.'], moves: [] }; renderResults(); reveal('results'); };
     worker.postMessage({ board, rack, bagEmpty });
     renderAction(); renderResults();
-  } catch { stopSearch(); result = { errors: ['Open the app through its localhost server to enable the analyzer.'], moves: [] }; renderResults(); }
+  } catch { stopSearch(); result = { errors: ['The search could not start. Reload the page and try again.'], moves: [] }; renderResults(); reveal('results'); }
 };
 let resizeFrame;
 new ResizeObserver(() => { cancelAnimationFrame(resizeFrame); resizeFrame = requestAnimationFrame(() => renderBoard(true)); }).observe($('board-viewport'));

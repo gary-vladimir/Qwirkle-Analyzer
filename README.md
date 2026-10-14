@@ -22,13 +22,15 @@ Fly.io does not currently offer an ongoing free tier for new accounts. This conf
 
 ## Use
 
-1. Choose one of the 36 tiles, then click board squares to recreate the table. Right-click, use the eraser, or press Delete to remove a tile. Arrow keys navigate the grid. The grid expands as you place tiles; scroll or zoom to explore it.
-2. Click empty rack slots to add your selected tile, up to six. Click filled slots to remove tiles.
+1. Tap the selected tile above the table to open the picker. Choose a color, then a shape, and tap board squares to recreate the table. **Erase**, right-click, or press Delete to remove a tile. Arrow keys navigate the grid. Drag or swipe to explore; **Pan** pauses placement while you look around. Use the zoom controls or **Fit table to view** as needed.
+2. Tap any rack slot to choose its tile, up to six. Tap a filled slot to replace it or choose **Remove from rack**. The picker opens as a bottom sheet on phones and supports Escape to close.
 3. Check **The draw bag is empty** only when there are no tiles left to draw.
-4. Click **Find best move**. Green outlines preview the move. The result includes the score for each affected line, bonuses, coordinates, and alternative moves. The best 100 moves are available for preview; every legal move is evaluated and counted.
+4. Tap **Find best move** (always available at the bottom on phones). The app takes you to the result, with the score, numbered tiles, and alternative plays. Tap **See outlined tiles on the table** to inspect the placement, then use the table’s score strip to return to its details. Expand **How this move scores** for individual lines and bonuses. The best 100 moves are available for preview; every legal move is evaluated and counted.
 5. **Apply this move** updates the table and rack. Add newly drawn tiles manually. **Undo** restores the last edit, including examples, clears, and applied moves.
 
 The position is saved in this browser's local storage. Nothing is uploaded. The official-rules link is the only external link. An example position is available without overwriting your position permanently: use Undo to restore it.
+
+The layout adapts to phone, tablet, and desktop screens. Large touch controls, keyboard focus indicators, reduced-motion support, and safe-area spacing keep the editor usable across screen sizes. No frontend dependencies or external fonts are loaded.
 
 Saved positions are separate for each browser and origin. A position entered on localhost does not automatically appear on the public Fly.io address or another device.
 
