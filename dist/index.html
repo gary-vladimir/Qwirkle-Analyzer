@@ -2,45 +2,62 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f6f7f9">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f5f0">
+  <meta name="description" content="Find your highest-scoring Qwirkle move. Recreate the table, add your rack, and explore every legal play.">
   <title>Qwirkle Analyzer</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <header class="header"><a class="brand" href="/" aria-label="Qwirkle Analyzer home"><span class="brand-icon">✣</span> Qwirkle<span class="brand-light">Analyzer</span></a><span class="local"><i></i> BROWSER WORKSPACE</span></header>
+  <a class="skip-link" href="#table">Skip to the table</a>
+  <header class="header">
+    <a class="brand" href="/" aria-label="Qwirkle Analyzer home"><span class="brand-icon" aria-hidden="true">✣</span><span>Qwirkle <span class="brand-light">Analyzer</span></span></a>
+    <span class="local"><i></i> YOUR PRIVATE WORKSPACE</span>
+    <button id="example" class="quiet-button">Try example <span aria-hidden="true">↗</span></button>
+  </header>
   <main>
-    <div class="intro"><div><div class="eyebrow">A LITTLE CLARITY FOR YOUR NEXT TURN</div><h1>Make your best move.</h1><p>Recreate the table. Add your tiles. Find the most points.</p></div><button id="example" class="secondary">↗ Try an example</button></div>
+    <div class="intro"><div class="eyebrow">SMALL TILES. BIG POSSIBILITIES.</div><h1>Find your next <em>great move.</em></h1><p>Your table. Your tiles. The most points possible.</p></div>
     <div class="workspace">
-      <aside class="sidebar">
-        <section class="panel palette-panel">
-          <div class="section-title"><h2><span class="step">1</span> Choose a tile</h2><button id="erase" class="text-button" aria-pressed="false">Eraser</button></div>
-          <p class="hint">Select below, then click a board square.</p>
-          <div id="palette" class="palette" aria-label="Tile palette"></div>
-          <div id="selected-label" class="selected-label"></div>
-        </section>
-        <section class="panel rack-panel">
-          <div class="section-title"><h2><span class="step">2</span> Your rack</h2><span id="rack-count" class="muted">0 / 6</span></div>
-          <p class="hint">Click an empty slot to add the selected tile.<br>Click a filled slot to remove it.</p>
-          <div id="rack" class="rack" aria-label="Your tiles"></div>
-          <label class="checkbox"><input id="bag-empty" type="checkbox"><span>The draw bag is empty</span><span class="info" title="Adds 6 points if the move uses your entire rack.">ⓘ</span></label>
-          <button id="analyze" class="primary">Find best move <span>→</span></button>
-          <p class="under-button">Every legal play. Highest score.</p>
-        </section>
-        <details class="rules"><summary>A quick rules refresher <span>+</span></summary><p>Lines share one color or one shape, with no duplicates and at most six tiles. Each turn adds tiles to a single connected line; existing tiles may sit between the new ones.</p><p>Score every tile in each line created or extended. A six-tile line earns 6 extra points. Emptying your rack when the bag is empty earns another 6.</p><p>On an empty board, play your largest matching set. The analyzer assumes you are the starting player.</p><a href="https://www.mindware.orientaltrading.com/pdf/instructions/32016.pdf" target="_blank" rel="noreferrer">Official MindWare rules ↗</a></details>
-      </aside>
-      <div class="main-column">
-        <section class="panel board-panel">
-          <div class="board-toolbar"><div><h2>The table <span id="board-count" class="pill">0 tiles</span></h2><p class="hint">Click to place · Right-click to remove</p></div><div class="board-actions"><button id="undo" title="Undo last edit" aria-label="Undo last edit">↶</button><button id="fit" title="Center board" aria-label="Center board">⌖</button><button id="zoom-out" title="Zoom out" aria-label="Zoom out">−</button><button id="zoom-in" title="Zoom in" aria-label="Zoom in">+</button><button id="clear" class="clear-button">Clear</button></div></div>
+      <section id="table" class="panel board-panel" aria-labelledby="table-title" tabindex="-1">
+        <div class="section-title"><h2 id="table-title"><span class="step">01</span> The table <span id="board-count" class="pill">0 tiles</span></h2><button id="undo" class="quiet-button" disabled title="Undo last edit">↶ <span>Undo</span></button></div>
+        <div class="edit-tools">
+          <button id="choose-tile" class="tile-tool" aria-haspopup="dialog"><span id="active-tile"></span><span><small>PLACE TILE</small><strong id="selected-label"></strong></span><span class="chevron" aria-hidden="true">⌄</span></button>
+          <button id="erase" class="tool-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 3 6 6-11 11H6l-4-4L15 3ZM6 12l6 6M10 20h11"/></svg><span>Erase</span></button>
+          <button id="pan" class="tool-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg><span>Pan</span></button>
+        </div>
+        <div class="board-stage">
           <div id="board-viewport" class="board-viewport"><div id="board" class="board" aria-label="Board editor"></div></div>
-          <div class="board-footer"><span><i class="legend-existing"></i> On the table <i class="legend-new"></i> Suggested move</span><span>Scroll to explore the table</span></div>
+          <div id="board-empty" class="board-empty"><strong>A fresh table.</strong><span>Choose a tile, then tap a square to begin.</span></div>
+          <div class="zoom-controls" aria-label="Board view controls"><button id="zoom-out" aria-label="Zoom out">−</button><span id="zoom-level">100%</span><button id="zoom-in" aria-label="Zoom in">+</button><button id="fit" aria-label="Fit table to view" title="Fit table to view">⌖</button></div>
+        </div>
+        <div class="board-footer"><span id="board-help">Tap to place · Drag to explore</span><button id="clear" class="quiet-button">Clear table</button></div>
+        <button id="preview-link" class="preview-link" hidden></button>
+      </section>
+      <aside class="side-column">
+        <section id="rack-panel" class="panel rack-panel" aria-labelledby="rack-title">
+          <div class="section-title"><h2 id="rack-title"><span class="step">02</span> Your rack</h2><span id="rack-count" class="pill">0 / 6</span></div>
+          <p class="hint">Tap a slot to choose or change a tile.</p>
+          <div id="rack" class="rack" aria-label="Your tiles"></div>
+          <label class="checkbox"><input id="bag-empty" type="checkbox"><span>Draw bag is empty<small>Include the 6-point finishing bonus</small></span></label>
         </section>
-        <section id="results" class="panel results" aria-live="polite"></section>
-        <div id="status" class="status" role="status"></div>
-      </div>
+        <div class="action-dock"><div class="action-inner"><div class="action-copy"><strong id="action-title">Your best move awaits</strong><span id="action-hint">Add your rack to get started</span></div><button id="analyze" class="primary">Find best move <span aria-hidden="true">↗</span></button></div></div>
+        <section id="results" class="panel results" aria-live="polite" aria-atomic="true" tabindex="-1"></section>
+      </aside>
     </div>
-    <footer><span>Built for the next turn, not the whole game.</span><span>Saved in this browser · No accounts · No uploads</span></footer>
+    <div id="status" class="status" role="status"></div>
+    <details class="rules"><summary>New to Qwirkle? Here’s a quick refresher <span aria-hidden="true">+</span></summary><div class="rules-content"><p>Lines share one color or one shape, with no duplicates and at most six tiles. Each turn adds tiles to a single connected line; existing tiles may sit between the new ones.</p><p>Score every tile in each line created or extended. A six-tile line earns 6 extra points. Emptying your rack when the bag is empty earns another 6.</p><p>On an empty board, play your largest matching set. The analyzer assumes you are the starting player.</p><a href="https://www.mindware.orientaltrading.com/pdf/instructions/32016.pdf" target="_blank" rel="noreferrer">Official MindWare rules ↗</a></div></details>
+    <footer><span><i></i> Saved on this device. Just for you.</span><span>No accounts. No uploads. Just your next move.</span></footer>
   </main>
+  <dialog id="tile-picker" aria-labelledby="picker-title" aria-describedby="picker-hint">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="section-title"><div><div class="eyebrow">MAKE IT A MATCH</div><h2 id="picker-title">Choose a tile</h2></div><button id="picker-close" class="icon-button" aria-label="Close tile picker">×</button></div>
+    <p id="picker-hint" class="hint">Choose a color, then tap a shape.</p>
+    <div class="picker-label">1. Color <span id="color-name"></span></div>
+    <div id="colors" class="colors" aria-label="Tile colors"></div>
+    <div class="picker-label">2. Shape</div>
+    <div id="palette" class="palette" aria-label="Tile shapes"></div>
+    <button id="remove-rack-tile" class="remove-button" hidden>Remove from rack</button>
+  </dialog>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
