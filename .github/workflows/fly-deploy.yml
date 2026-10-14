@@ -1,0 +1,62 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Finish an active deploy before starting the next one.
+concurrency:
+  group: fly-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FLY_APP_NAME: ${{ vars.FLY_APP_NAME }}
+    steps:
+      - name: Check out the pushed revision
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Check deployment configuration
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [[ ! "$FLY_APP_NAME" =~ ^[a-z0-9][a-z0-9-]*[a-z0-9]$ ]]; then
+            echo "::error::Set the repository Actions variable FLY_APP_NAME to your production Fly app name."
+            exit 1
+          fi
+          if [[ -z "$FLY_API_TOKEN" ]]; then
+            echo "::error::Set the repository Actions secret FLY_API_TOKEN to an app-scoped Fly deploy token. See DEPLOY.md."
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Run tests
+        run: npm test
+
+      - name: Set up Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
+
+      - name: Deploy to production
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --app "$FLY_APP_NAME" --remote-only --ha=false
+
+      - name: Verify public health endpoint
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            --retry-delay 3 --max-time 30 "https://${FLY_APP_NAME}.fly.dev/healthz"

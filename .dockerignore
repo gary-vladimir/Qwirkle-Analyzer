@@ -1,0 +1,7 @@
+# Only the runtime files enter the build context.
+**
+!Dockerfile
+!package.json
+!server.mjs
+!dist/
+!dist/**

@@ -1,6 +1,6 @@
 # Qwirkle Analyzer
 
-A small, local-only web app to find the highest-scoring legal Qwirkle move. No dependencies, installation, accounts, API keys, or build step.
+A small web app to find the highest-scoring legal Qwirkle move. Run it locally or publish it on Fly.io. No npm dependencies, accounts, API keys, or frontend build step. Analysis and saved positions stay in each visitor's browser.
 
 ## Run
 
@@ -12,6 +12,14 @@ npm start
 
 Open **http://127.0.0.1:5174**. The server binds only to the loopback interface. Stop it with Ctrl+C. To change ports, run `PORT=5175 npm start`.
 
+## Deploy publicly
+
+See [DEPLOY.md](DEPLOY.md) for Fly.io setup, automatic deployment, cost notes, and troubleshooting. The included Dockerfile listens on `0.0.0.0:8080`; ordinary `npm start` still defaults to localhost.
+
+Once the repository's `FLY_APP_NAME` Actions variable and `FLY_API_TOKEN` Actions secret are configured and `.github/workflows/fly-deploy.yml` is pushed, every push to `main` runs the tests and automatically deploys to production. Failed tests block deployment. Production deploys run one at a time. Local commits trigger deployment only after they are pushed to GitHub.
+
+Fly.io does not currently offer an ongoing free tier for new accounts. This configuration minimizes resource use with one 256 MB shared-CPU Machine, automatic stop/start, and no database or persistent volume. It is not a guarantee of free hosting.
+
 ## Use
 
 1. Choose one of the 36 tiles, then click board squares to recreate the table. Right-click, use the eraser, or press Delete to remove a tile. Arrow keys navigate the grid. The grid expands as you place tiles; scroll or zoom to explore it.
@@ -21,6 +29,8 @@ Open **http://127.0.0.1:5174**. The server binds only to the loopback interface.
 5. **Apply this move** updates the table and rack. Add newly drawn tiles manually. **Undo** restores the last edit, including examples, clears, and applied moves.
 
 The position is saved in this browser's local storage. Nothing is uploaded. The official-rules link is the only external link. An example position is available without overwriting your position permanently: use Undo to restore it.
+
+Saved positions are separate for each browser and origin. A position entered on localhost does not automatically appear on the public Fly.io address or another device.
 
 ## Rules and search
 
