@@ -1,23 +1,28 @@
 # Deploy Qwirkle Analyzer to Fly.io
 
+[Back to the README](README.md)
+
+The upstream demo is [qwirkle-analyzer.fly.dev](https://qwirkle-analyzer.fly.dev). To deploy a fork, use your own globally unique Fly app name and GitHub repository. The commands below assume Bash or Zsh and run from the repository root.
+
 ## Cost and configuration
+
+Provider links and trial details checked on 2026-10-15; confirm current pricing before deploying.
 
 Fly.io currently has **no ongoing free tier for new accounts**. Its [free trial](https://fly.io/docs/about/free-trial/) ends after **2 total VM hours or 7 days**, whichever happens first. Adding a payment method ends the trial and starts usage billing. See [cost management](https://fly.io/docs/about/cost-management/) and [current pricing](https://fly.io/docs/about/pricing/). Legacy allowances depend on your account; configuration cannot guarantee a $0 bill.
 
-The checked-in `fly.toml` uses one shared CPU with 256 MB RAM in Dallas (`dfw`), HTTPS, automatic stop when idle, and automatic start on a request. The commands below use `--ha=false` to avoid an additional standby Machine. They allocate a shared IPv4 and a public IPv6, not a paid dedicated IPv4. There is no database, volume, secret, or paid add-on to configure.
+The checked-in `fly.toml` uses one shared CPU with 256 MB RAM in Dallas (`dfw`), HTTPS, automatic stop when idle, and automatic start on a request. The commands below use `--ha=false` to avoid an additional standby Machine. They allocate a shared IPv4 and a public IPv6, not a paid dedicated IPv4. The app requires no database, volume, runtime secret, or paid add-on. GitHub deployment requires an app-scoped deployment token, configured below.
 
 Idle shutdown saves compute, but root filesystem storage, bandwidth, and remote builds can still incur charges under Fly's current pricing. It is not a spending cap. The first visitor after idle shutdown may wait briefly for startup, and a single Machine can have brief downtime during deployments. The search runs on visitors' devices, so it does not consume server CPU.
 
 ## First deployment
 
-The Fly CLI is already installed on this computer. On a different Mac, install it with `brew install flyctl` if needed. Run the following commands yourself in Terminal, from this checkout. Stop if a command reports an error.
+Install [the Fly CLI](https://fly.io/docs/flyctl/install/) and Node.js 24. On macOS with Homebrew, `brew install flyctl` installs the CLI. Sign in to your Fly account and run these commands from the cloned repository. Stop if a command reports an error.
 
 1. Sign in and choose a globally unique app name. Change the example below if it is taken. Keep this Terminal session open so `QWIRKLE_APP` remains defined.
 
    ```sh
-   cd /Users/gary/Documents/QwirkleAnalyzer
    fly auth login
-   export QWIRKLE_APP="qwirkle-analyzer"
+   export QWIRKLE_APP="your-unique-qwirkle-app"
    npm test
    ```
 
@@ -53,11 +58,12 @@ The Fly CLI is already installed on this computer. On a different Mac, install i
 
 `.github/workflows/fly-deploy.yml` deploys every push to `main` after `npm test` passes. It also offers a manual **Run workflow** action for `main`. Other branches cannot deploy production through this workflow. Deployments are serialized, use one Machine (`--ha=false`), and check the public health endpoint after deployment.
 
-Complete the one-time credential setup in your own Terminal. Use your actual existing Fly app name; do not create a new app. `gh` must be logged into a GitHub account with admin access to this repository (`gh auth login` if needed), and `fly` must be signed in (`fly auth login` if needed).
+Install the [GitHub CLI](https://cli.github.com/) for the one-time credential setup. Use your actual existing Fly app name; do not create a new app. `gh` must be logged into a GitHub account with admin access to this repository (`gh auth login` if needed), and `fly` must be signed in (`fly auth login` if needed).
 
 ```sh
-export QWIRKLE_APP="qwirkle-analyzer" # Replace if you chose a different name.
-gh variable set FLY_APP_NAME --body "$QWIRKLE_APP" --repo gary-vladimir/Qwirkle-Analyzer
+export QWIRKLE_APP="your-unique-qwirkle-app" # Use your existing Fly app.
+export QWIRKLE_REPO="YOUR-OWNER/Qwirkle-Analyzer" # Your GitHub repository, including forks.
+gh variable set FLY_APP_NAME --body "$QWIRKLE_APP" --repo "$QWIRKLE_REPO"
 
 # Capture the token in memory and send it directly to GitHub's encrypted secret.
 # This subshell stops if token creation fails, and does not print or save the token.
@@ -65,18 +71,18 @@ gh variable set FLY_APP_NAME --body "$QWIRKLE_APP" --repo gary-vladimir/Qwirkle-
   set -euo pipefail
   QWIRKLE_DEPLOY_TOKEN="$(fly tokens create deploy --app "$QWIRKLE_APP" --name "GitHub Actions production" --expiry 8760h)"
   test -n "$QWIRKLE_DEPLOY_TOKEN"
-  printf '%s' "$QWIRKLE_DEPLOY_TOKEN" | gh secret set FLY_API_TOKEN --repo gary-vladimir/Qwirkle-Analyzer
+  printf '%s' "$QWIRKLE_DEPLOY_TOKEN" | gh secret set FLY_API_TOKEN --repo "$QWIRKLE_REPO"
 )
 ```
 
-The token is scoped to this Fly app and expires after one year. Repeat the token command before expiry to renew the GitHub secret. Never commit the token or paste it into an issue or chat. This follows [Fly's GitHub Actions deployment workflow](https://fly.io/docs/launch/continuous-deployment-with-github-actions/) and [app-scoped token guidance](https://fly.io/docs/security/tokens/).
+The token is scoped to this Fly app and expires after one year. Record its creation/expiry in your credential manager and repeat the token command before expiry to update the GitHub secret. In a new shell, set both `QWIRKLE_APP` and `QWIRKLE_REPO` again. Repository variables and secrets are not copied into forks. Never commit the token or paste it into an issue or chat. This follows [Fly's GitHub Actions deployment workflow](https://fly.io/docs/launch/continuous-deployment-with-github-actions/) and [app-scoped token guidance](https://fly.io/docs/security/tokens/).
 
-Commit and push the workflow **and** the Dockerfile, `fly.toml`, `.dockerignore`, server changes, and tests. Those files must exist in GitHub for the runner to build the deployed app. A local commit alone does not trigger GitHub Actions; `git push origin main` does. Merging a pull request into `main` also triggers deployment.
+The workflow, Dockerfile, `fly.toml`, `.dockerignore`, server, and tests are already tracked. Keep them in your fork so GitHub can build and deploy the app. A local commit alone does not trigger GitHub Actions; `git push origin main` does. Merging a pull request into `main` also triggers deployment.
 
-Watch the first run at [GitHub Actions](https://github.com/gary-vladimir/Qwirkle-Analyzer/actions), or use:
+Watch the first run in your repository’s **Actions** tab, or use the same Terminal session:
 
 ```sh
-gh run list --workflow fly-deploy.yml --repo gary-vladimir/Qwirkle-Analyzer --limit 5
+gh run list --workflow fly-deploy.yml --repo "$QWIRKLE_REPO" --limit 5
 ```
 
 If an initial run fails because credentials were missing, add the variable/secret and rerun that failed run from the Actions page. If Actions is disabled in repository settings, enable GitHub Actions first.
@@ -86,8 +92,7 @@ If an initial run fails because credentials were missing, add the variable/secre
 Normal updates deploy automatically after a push to `main` once the setup above is complete. To deploy directly from a local checkout instead:
 
 ```sh
-cd /Users/gary/Documents/QwirkleAnalyzer
-export QWIRKLE_APP="qwirkle-analyzer" # Use the name you actually created.
+export QWIRKLE_APP="your-unique-qwirkle-app" # Use the name you actually created.
 npm test
 fly deploy --app "$QWIRKLE_APP" --remote-only --ha=false
 ```

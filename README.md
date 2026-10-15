@@ -1,65 +1,94 @@
 # Qwirkle Analyzer
 
-A small web app to find the highest-scoring legal Qwirkle move. Run it locally or publish it on Fly.io. No npm dependencies, accounts, API keys, or frontend build step. Analysis and saved positions stay in each visitor's browser.
+**Find the highest-scoring move for the tiles you have.** Recreate a Qwirkle table, enter your rack, and explore every legal play in your browser.
 
-## Run
+[Live demo](https://qwirkle-analyzer.fly.dev) · [Quick start](#quick-start) · [How it works](docs/ARCHITECTURE.md) · [Deployment](DEPLOY.md) · [Contributing](CONTRIBUTING.md)
 
-Requires Node.js 20 or newer.
+[![Production deployment](https://github.com/gary-vladimir/Qwirkle-Analyzer/actions/workflows/fly-deploy.yml/badge.svg?branch=main)](https://github.com/gary-vladimir/Qwirkle-Analyzer/actions/workflows/fly-deploy.yml)
+
+![Desktop workspace with the example table, six rack tiles, and a 19-point suggested move](docs/images/desktop-analysis.png)
+
+## What it does
+
+- **Exhaustive move search:** evaluates legal placements and ranks them by this turn’s points, including Qwirkle and finishing bonuses.
+- **Editable table and rack:** choose colors and shapes, place or erase tiles, pan, zoom, and undo edits.
+- **Explainable results:** numbered previews, per-line scoring, tied-best counts, and up to 100 alternative plays.
+- **Mobile-friendly controls:** a bottom-sheet tile picker, large rack targets, and a persistent analysis button.
+- **Browser-local state:** analysis runs in a cancellable Web Worker; the current position is saved in local storage.
+- **Minimal stack:** plain HTML, CSS, ES modules, and a small Node.js server. No npm dependencies, accounts, API keys, or frontend build step.
+
+## Mobile UI
+
+Actual screenshots of the running app: choosing a tile and reviewing the best move.
+
+<p>
+  <img src="docs/images/mobile-picker.png" alt="Mobile bottom-sheet picker with six colors and six original Qwirkle shapes" width="280">
+  <img src="docs/images/mobile-analysis.png" alt="Mobile analysis showing a 19-point move using three starburst tiles" width="280">
+</p>
+
+The built-in example checks **53 legal plays** and finds a **19-point** best move. Search duration varies by device. Screenshot refresh instructions are in [Contributing](CONTRIBUTING.md#updating-screenshots).
+
+## Quick start
+
+Use Node.js **24** to match CI and the container. The package declares Node.js 20 or newer. You also need Git and a modern browser supporting ES modules, module workers, and native dialogs.
 
 ```sh
+git clone https://github.com/gary-vladimir/Qwirkle-Analyzer.git
+cd Qwirkle-Analyzer
 npm start
 ```
 
-Open **http://127.0.0.1:5174**. The server binds only to the loopback interface. Stop it with Ctrl+C. To change ports, run `PORT=5175 npm start`.
+Open [localhost:5174](http://127.0.0.1:5174). There is no install or build step. Stop the server with `Ctrl+C`.
 
-## Deploy publicly
+The default bind address is `127.0.0.1`. Set `PORT` to use another port; set `HOST` only if you want another bind address. For example, in a POSIX shell:
 
-See [DEPLOY.md](DEPLOY.md) for Fly.io setup, automatic deployment, cost notes, and troubleshooting. The included Dockerfile listens on `0.0.0.0:8080`; ordinary `npm start` still defaults to localhost.
+```sh
+PORT=5175 npm start
+```
 
-Once the repository's `FLY_APP_NAME` Actions variable and `FLY_API_TOKEN` Actions secret are configured and `.github/workflows/fly-deploy.yml` is pushed, every push to `main` runs the tests and automatically deploys to production. Failed tests block deployment. Production deploys run one at a time. Local commits trigger deployment only after they are pushed to GitHub.
+Serve the app over HTTP using the command above; opening `dist/index.html` directly as a file does not provide the module-worker environment the analyzer needs.
 
-Fly.io does not currently offer an ongoing free tier for new accounts. This configuration minimizes resource use with one 256 MB shared-CPU Machine, automatic stop/start, and no database or persistent volume. It is not a guarantee of free hosting.
+## Using the analyzer
 
-## Use
+1. Select **Try example** for a quick tour, or tap the tile above the table, choose a color and shape, then tap table squares to recreate your position.
+2. Tap a rack slot to add a tile. Tap a filled slot to replace it or choose **Remove from rack**.
+3. Check **Draw bag is empty** only when no tiles remain to draw. The 6-point finishing bonus applies only if a move also empties your rack.
+4. Select **Find best move**. Use **See outlined tiles on the table** to inspect its placement, **How this move scores** for the breakdown, and **Explore other plays** for alternatives.
+5. **Apply this move** updates the table and rack. Enter newly drawn tiles yourself. **Undo** restores the previous edit, including clears, example loads, and applied moves.
 
-1. Tap the selected tile above the table to open the picker. Choose a color, then a shape, and tap board squares to recreate the table. **Erase**, right-click, or press Delete to remove a tile. Arrow keys navigate the grid. Drag or swipe to explore; **Pan** pauses placement while you look around. Use the zoom controls or **Fit table to view** as needed.
-2. Tap any rack slot to choose its tile, up to six. Tap a filled slot to replace it or choose **Remove from rack**. The picker opens as a bottom sheet on phones and supports Escape to close.
-3. Check **The draw bag is empty** only when there are no tiles left to draw.
-4. Tap **Find best move** (always available at the bottom on phones). The app takes you to the result, with the score, numbered tiles, and alternative plays. Tap **See outlined tiles on the table** to inspect the placement, then use the table’s score strip to return to its details. Expand **How this move scores** for individual lines and bonuses. The best 100 moves are available for preview; every legal move is evaluated and counted.
-5. **Apply this move** updates the table and rack. Add newly drawn tiles manually. **Undo** restores the last edit, including examples, clears, and applied moves.
+| Control | Action |
+| --- | --- |
+| Tap or click a table square | Place the selected tile, or erase while Erase is active |
+| Drag or swipe the table | Explore the board; Pan mode pauses placement |
+| Right-click, Delete, or Backspace | Remove a table tile |
+| Arrow keys on a table square | Move keyboard focus through the grid |
+| − / + / Fit table to view | Adjust the board view |
+| Escape in the tile picker | Close without choosing a tile |
 
-The position is saved in this browser's local storage. Nothing is uploaded. The official-rules link is the only external link. An example position is available without overwriting your position permanently: use Undo to restore it.
+Positions are saved per browser and origin. Localhost, the public demo, and another device have separate saved positions. Clearing browser storage removes the saved position; undo history lasts only for the current page session. Board and rack data are not uploaded, and the app includes no analytics or external font requests.
 
-The layout adapts to phone, tablet, and desktop screens. Large touch controls, keyboard focus indicators, reduced-motion support, and safe-area spacing keep the editor usable across screen sizes. No frontend dependencies or external fonts are loaded.
+## How it works
 
-Saved positions are separate for each browser and origin. A position entered on localhost does not automatically appear on the public Fly.io address or another device.
+The engine enumerates horizontal and vertical segments of up to six tiles, tries distinct assignments from your rack, rejects invalid lines and crossings, and scores every affected line once. A module Web Worker keeps this search off the UI thread.
 
-## Rules and search
+**“Best” means the most points this turn.** The app does not predict future draws or opponents’ moves. On an empty table, it assumes you are the starting player and requires your largest matching set. Read the [architecture and rules documentation](docs/ARCHITECTURE.md) for the algorithm, validation boundaries, data model, and artwork provenance.
 
-Based on [MindWare's official Qwirkle rules](https://www.mindware.orientaltrading.com/pdf/instructions/32016.pdf), also checked against the publisher's [travel edition rules](https://www.mindware.orientaltrading.com/pdf/instructions/52132.pdf).
-
-The engine validates connectivity, line attributes, duplicates, the six-tile line limit, and the three-copy inventory limit across the entered board and rack. An incomplete position can be edited freely but must be valid before analysis. This checks the static position, not whether it could have arisen through a particular history of turns.
-
-Every legal turn ends with all its new tiles in one uninterrupted horizontal or vertical line of at most six tiles. At least one new tile touches the old board. The engine enumerates every segment of length 1–6 containing such an empty neighboring square, including segments with existing tiles between newly placed ones. It tries every distinct rack assignment to the segment's empty squares, pruning only invalid lines and perpendicular crossings. Identical rack copies are interchangeable and cannot occur together in a played line. Single-tile plays found along both axes are deduplicated.
-
-Each affected line scores once; a line of six adds a six-point Qwirkle bonus. Emptying the rack with an empty draw bag adds six points. On an empty board, the app assumes you are the starting player and requires the largest matching set. Opening translations and rotations are equivalent, so it uses a canonical horizontal line at the origin while still considering tile order.
-
-The search has no time cutoff or heuristic approximation and runs in a cancellable Web Worker. Scores optimize **this turn's points**, not long-term strategy, future draws, or opponent responses. Equal scores are displayed with more tiles played first, then a deterministic placement order. Tile exchanges score no points and are suggested only when no placement is possible.
-
-## Verify
+## Development and tests
 
 ```sh
 npm test
 ```
 
-Tests cover rule validation, opening requirements, gap filling, extending both ends, crossings, multiple Qwirkles, the end bonus, and all-move comparisons against an independent brute-force implementation.
+The suite uses Node’s built-in test runner. It covers position validation, openings, gap filling, crossings, multiple Qwirkles, finishing bonuses, comparisons against an independent brute-force search, and the HTTP server’s routes and shutdown behavior.
 
-`dist/` contains the complete browser app. `server.mjs` is a minimal static file server; `dist/engine.js` contains the pure rules and search code.
+Edit files in `dist/` directly and reload the browser; this directory contains the application source, not a build artifact. Changes to `server.mjs` require restarting the server. See [Contributing](CONTRIBUTING.md) for the development workflow and UI checks.
 
-## Tile artwork
+## Deployment
 
-`dist/tile-art.js` contains the original vector silhouettes extracted from the tile legend in [MindWare's official rulebook](https://i.mindware.com/match/original/Asset_Type/Document/origFilename/32016/) (PDF title: `Qwirkle_Rules_200401_OL`). The paths are translated to local coordinates without redrawing, rotation, or changing their proportions. Symbol sizes and positions relative to the black tile face are preserved. All app views use this same artwork; existing saved tile IDs remain unchanged.
+The demo runs on Fly.io. Pushes to `main` run tests, deploy the container, and verify `/healthz` through [GitHub Actions](.github/workflows/fly-deploy.yml). Forks need their own Fly app, `FLY_APP_NAME` repository variable, and `FLY_API_TOKEN` repository secret.
 
-The six screen colors are sampled from PDFium's RGB rendering of the rulebook's CMYK colors. These match that published reference; physical ink, editions, lighting, and displays can differ. Qwirkle and its original artwork belong to their respective owners. The assets are bundled locally, with no runtime requests to the publisher.
+See [DEPLOY.md](DEPLOY.md) for setup, token renewal, manual deployment, costs, and troubleshooting. The configuration uses one shared CPU, 256 MB RAM, and automatic stop/start; it does not guarantee free hosting.
 
-For regeneration only, `scripts/extract-tile-art.py path/to/rulebook.pdf` requires Python with pdfplumber and Pillow. Running the app still requires only Node.js.
+## Acknowledgments
+
+Rules follow [MindWare’s official Qwirkle rulebook](https://www.mindware.orientaltrading.com/pdf/instructions/32016.pdf). Tile silhouettes are extracted from the publisher’s tile legend and retain their original proportions. Qwirkle and its artwork belong to their respective owners. This is an independent project, not an official MindWare product.
