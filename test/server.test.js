@@ -25,7 +25,7 @@ test('deployment server exposes health and browser assets, restricts files, and 
   assert.equal(health.status, 200);
   assert.equal(await health.text(), 'ok\n');
   for (const [path, type] of [
-    ['/', 'text/html'], ['/app.js', 'text/javascript'], ['/engine.js', 'text/javascript'],
+    ['/', 'text/html'], ['/app.js', 'text/javascript'], ['/editor-state.js', 'text/javascript'], ['/engine.js', 'text/javascript'],
     ['/worker.js', 'text/javascript'], ['/tile-art.js', 'text/javascript'], ['/styles.css', 'text/css'],
   ]) {
     const response = await fetch(`${url}${path}`);

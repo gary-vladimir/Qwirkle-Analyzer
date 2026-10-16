@@ -1,4 +1,5 @@
 import { COLORS, SHAPES, key, tileName, validatePosition } from './engine.js';
+import { restorePosition, moveRackTile } from './editor-state.js';
 import { TILE_ART, TILE_COLORS, TILE_FACE } from './tile-art.js';
 
 const $ = id => document.getElementById(id);
@@ -13,13 +14,8 @@ let panning = false, pickerTarget = null, pickerShape = null, trayShape = null, 
 const storageKey = 'qwirkle-analyzer-v1';
 try {
   const saved = JSON.parse(localStorage.getItem(storageKey));
-  if (saved && Array.isArray(saved.board) && Array.isArray(saved.rack)) {
-    // Accept incomplete editing positions, but reject malformed stored data.
-    const errors = validatePosition(saved.board, saved.rack);
-    if (!errors.some(e => /invalid color|lists of tiles|108 tiles|at most six|same square/.test(e))) {
-      board = saved.board; rack = saved.rack; bagEmpty = !!saved.bagEmpty;
-    }
-  }
+  const position = restorePosition(saved);
+  if (position) ({ board, rack, bagEmpty } = position);
 } catch { /* A fresh workspace is safe if storage is unavailable. */ }
 
 function save() {
@@ -113,12 +109,14 @@ function renderPalette() {
   });
 }
 function reorderRack(from, to) {
+  const next = moveRackTile(rack, from, to);
+  if (next === rack) return;
+  remember(); rack = next;
   to = Math.min(to, rack.length - 1);
-  if (from === to || to < 0 || from < 0 || from >= rack.length) return;
-  remember(); const [tile] = rack.splice(from, 1); rack.splice(to, 0, tile);
   changed(`Rack tile moved to slot ${to + 1}.`);
   focusTarget({ kind: 'rack', index: to });
 }
+
 function renderRack() {
   $('rack').replaceChildren();
   for (let i = 0; i < 6; i++) {
@@ -173,6 +171,7 @@ function renderBoard(center = false) {
     button.className = 'cell' + (suggestion ? ' preview' : '') + (!x && !y ? ' origin' : '');
     button.dataset.x = x; button.dataset.y = y;
     button.setAttribute('aria-label', `${t ? tileName(t) : 'Empty square'} at (${x}, ${y})${suggestion ? ', suggested move' : ''}`);
+    button.setAttribute('aria-haspopup', 'dialog');
     button.title = `(${x}, ${y})${t ? ` · ${tileName(t)}` : ''}`;
     if (t) button.innerHTML = tileMarkup(t, suggestion?.number);
     // Arrow keys navigate the grid without hundreds of sequential tab stops.
@@ -273,7 +272,8 @@ $('remove-tile').onclick = () => {
   changed('Tile removed.'); focusTarget(target);
 };
 for (const [id, delta] of [['rack-left', -1], ['rack-right', 1]]) $(id).onclick = () => {
-  const index = pickerTarget.index; $('tile-picker').close(); reorderRack(index, index + delta);
+  const index = pickerTarget.index; pickerTarget = { kind: 'rack', index: index + delta };
+  $('tile-picker').close(); reorderRack(index, index + delta);
 };
 $('erase').onclick = () => { erasing = !erasing; panning = false; renderTools(); };
 $('pan').onclick = () => { panning = !panning; erasing = false; renderTools(); };
@@ -306,13 +306,19 @@ function dragScroll() {
   const d = tileDrag; if (!d?.moved) return;
   const viewport = $('board-viewport'), rect = viewport.getBoundingClientRect();
   const speed = (value, min, max) => value < min + 35 ? -8 : value > max - 35 ? 8 : 0;
+  let dx = 0, dy = 0;
   if (d.kind === 'shape' && d.x > rect.left && d.x < rect.right && d.y > rect.top && d.y < rect.bottom) {
-    viewport.scrollLeft += speed(d.x, rect.left, rect.right);
-    viewport.scrollTop += speed(d.y, rect.top, rect.bottom);
+    dx = speed(d.x, rect.left, rect.right); dy = speed(d.y, rect.top, rect.bottom);
   }
-  // Scroll the page above the fixed tray, leaving the drag source within reach.
   const bottom = document.querySelector('.shape-dock').getBoundingClientRect().top;
-  window.scrollBy(0, d.y < 65 ? -10 : d.y > bottom - 35 ? 10 : 0);
+  const pageDy = d.y < 65 ? -10 : d.y > bottom - 35 && d.y < bottom ? 10 : 0;
+  const zone = `${dx},${dy},${pageDy}`;
+  if (zone !== d.scrollZone) { d.scrollZone = zone; d.edgeSince = performance.now(); }
+  // Briefly hover at an edge to scroll; crossing it should not shift the target.
+  if (performance.now() - d.edgeSince > 220) {
+    viewport.scrollLeft += dx; viewport.scrollTop += dy;
+    window.scrollBy(0, pageDy);
+  }
   updateDragTarget(); d.frame = requestAnimationFrame(dragScroll);
 }
 window.addEventListener('pointermove', event => {
@@ -346,9 +352,14 @@ function finishTileDrag(commit = false) {
   else if (old) Object.assign(old, d.tile);
   else board.push({ x: target.x, y: target.y, ...d.tile });
   changed(`${tileName(d.tile)} placed. Tap it to choose another color.`);
+  $('tray-hint').textContent = `${tileName(d.tile)} placed · Tap it to change color`;
   focusTarget(target);
 }
-window.addEventListener('pointerup', event => { if (tileDrag?.pointerId === event.pointerId) finishTileDrag(true); });
+window.addEventListener('pointerup', event => {
+  if (tileDrag?.pointerId !== event.pointerId) return;
+  if (tileDrag.moved) { tileDrag.x = event.clientX; tileDrag.y = event.clientY; updateDragTarget(); }
+  finishTileDrag(true);
+});
 window.addEventListener('pointercancel', () => finishTileDrag());
 window.addEventListener('blur', () => finishTileDrag());
 window.addEventListener('keydown', event => {

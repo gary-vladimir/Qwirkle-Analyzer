@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const files = new Map([
   ['/', ['index.html', 'text/html']],
-  ...['app.js', 'engine.js', 'worker.js', 'tile-art.js'].map(f => [`/${f}`, [f, 'text/javascript']]),
+  ...['app.js', 'editor-state.js', 'engine.js', 'worker.js', 'tile-art.js'].map(f => [`/${f}`, [f, 'text/javascript']]),
   ['/styles.css', ['styles.css', 'text/css']],
 ]);
 const port = Number(process.env.PORT || 5174);
