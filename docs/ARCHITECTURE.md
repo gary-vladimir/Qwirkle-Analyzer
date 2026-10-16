@@ -25,11 +25,13 @@ flowchart LR
 | `dist/index.html` | Semantic page layout and tile-picker dialog |
 | `dist/styles.css` | Responsive layout, touch controls, focus and reduced-motion styling |
 | `dist/app.js` | Editing, undo history, local persistence, worker lifecycle, move previews |
+| `dist/editor-state.js` | Safe restoration of unfinished positions and immutable rack reordering |
 | `dist/engine.js` | Position validation, scoring, exhaustive move enumeration |
 | `dist/worker.js` | Worker message boundary and elapsed search time |
 | `dist/tile-art.js` | Shared original tile silhouettes and reference colors |
 | `server.mjs` | Static route allowlist, health endpoint, graceful shutdown |
 | `test/engine.test.js` | Rules and independent brute-force comparisons |
+| `test/editor-state.test.js` | Saved-position recovery and rack order regression tests |
 | `test/server.test.js` | HTTP assets, allowed methods, file restrictions and shutdown |
 
 New browser assets must be added to the allowlist in `server.mjs` and its server test. Repository documentation and screenshots are not served by the app or included in the Docker build context.
@@ -41,6 +43,14 @@ Board tiles contain `{ x, y, color, shape }`; rack tiles contain `{ color, shape
 The local-storage key is `qwirkle-analyzer-v1`, containing `{ board, rack, bagEmpty }`. The UI allows temporarily invalid positions during editing, then validates before searching. Up to 100 undo snapshots are kept in memory for the current page session; undo history and analysis results are not persisted.
 
 Analysis runs in a module Web Worker. Editing the position or cancelling the search terminates the worker and invalidates its preview. Applying a move adds its placements to the board and removes the matching rack tiles. New draws are entered manually.
+
+## Editor interactions
+
+An empty board square or rack slot opens the shape step, followed by a color step that commits the edit. Existing tiles open directly to colors. Cancelling the dialog leaves the position untouched. A selected tray shape skips the shape step for the next empty destination.
+
+The fixed tray uses Pointer Events for mouse, pen, and touch dragging. Tray drops use the last selected color (red at startup); existing destinations are replaced. Rack drags reorder rather than duplicate tiles. Pointer capture retains the gesture outside its source; a movement threshold separates clicks from drags, and a hover delay prevents edge scrolling from shifting targets during ordinary crossings. A ghost and destination outline give feedback. Pointer cancellation, window blur, Escape, and outside drops do not commit an edit. Rack order also supports Alt + arrow keys and popup Move buttons.
+
+Each completed edit takes one undo snapshot, invalidates analysis, and saves the position. The saved-state validator rejects malformed data while retaining temporarily illegal lines or disconnected boards, so unfinished setup survives reload.
 
 ## Rules and exhaustive search
 
