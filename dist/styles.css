@@ -45,12 +45,9 @@ h2 { font-size: 16px; letter-spacing: -.3px; display: flex; align-items: center;
 .board-panel { overflow: hidden; scroll-margin-top: 16px; }
 .board-panel > .section-title { padding: 12px 20px 0; }
 .edit-tools { display: flex; align-items: stretch; gap: 8px; padding: 10px 20px 18px; }
-.tile-tool { display: flex; gap: 10px; align-items: center; text-align: left; background: #f4f6ef; border: 1px solid #d9e1ce; border-radius: 12px; padding: 8px 12px; flex: 1; min-width: 0; }
-.tile-tool.active { border-color: #63926b; box-shadow: inset 0 0 0 1px #63926b; }
-#active-tile { width: 36px; flex-shrink: 0; }
-.tile-tool small { display: block; color: #6b7d62; font-size: 9px; letter-spacing: 1px; font-weight: 700; margin-bottom: 3px; }
-.tile-tool strong { overflow-wrap: anywhere; display: block; font-size: 12px; font-weight: 650; }
-.chevron { margin-left: auto; }
+.placement-guide { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 5px; min-width: 0; padding-block: 7px; }
+.placement-guide strong { font-size: 12px; }
+.placement-guide span { font-size: 11px; color: var(--muted); }
 .tool-button { width: 58px; flex-shrink: 0; border: 1px solid var(--line); background: white; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10px; }
 .tool-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .tool-button[aria-pressed="true"] { color: var(--green); background: #e9efdf; border-color: #75966c; }
@@ -226,4 +223,41 @@ dialog h2 { font-size: 23px; letter-spacing: -.7px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+}
+
+/* The six shapes stay available while the workspace scrolls. */
+body { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+.shape-dock { position: fixed; bottom: 0; inset-inline: 0; z-index: 20; display: flex; justify-content: center; align-items: center; gap: 30px; padding: 12px 20px calc(12px + env(safe-area-inset-bottom)); background: #fbfcf8f5; backdrop-filter: blur(16px); border-top: 1px solid #d6dece; box-shadow: 0 -4px 24px #2940290c; }
+.tray-copy { display: grid; gap: 6px; max-width: 240px; }
+.tray-copy strong { font-size: 14px; }
+.tray-copy span { font-size: 11px; line-height: 1.5; color: var(--muted); }
+.shape-tray { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; width: 430px; }
+.tray-shape { touch-action: none; user-select: none; -webkit-user-select: none; border: 1px solid transparent; border-radius: 10px; background: transparent; padding: 4px; display: grid; justify-items: center; gap: 4px; cursor: grab; min-width: 0; }
+.tray-shape .tile { width: 44px; }
+.tray-shape > span:last-child { font-size: 9px; white-space: nowrap; }
+.tray-shape:hover, .tray-shape[aria-pressed="true"] { background: #e8efdf; border-color: #86a575; }
+.rack .tile { touch-action: none; cursor: grab; }
+.drag-source { opacity: .35; }
+.tile-dragging, .tile-dragging * { cursor: grabbing !important; user-select: none !important; }
+.drop-target { background: #bed6a8 !important; outline: 3px solid #477340 !important; outline-offset: -3px; border-radius: 5px; }
+.drag-ghost { position: fixed; top: 0; left: 0; width: 56px; height: 56px; pointer-events: none; z-index: 100; opacity: .85; filter: drop-shadow(0 6px 7px #172b2250); }
+.drag-ghost.can-drop { opacity: 1; }
+#colors { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 20px; gap: 10px; }
+#palette { margin-top: 20px; }
+#change-shape { margin-top: 12px; }
+.color-choice[aria-pressed="true"] { background: #e8efdf; border-color: #86a575; }
+.rack-order { display: flex; justify-content: space-between; margin-top: 8px; }
+@media (max-width: 800px) {
+  main { padding-bottom: 28px; }
+  .intro { margin-bottom: 18px; }
+  .action-dock { position: static; padding: 0; border: 0; background: transparent; box-shadow: none; backdrop-filter: none; }
+  .shape-dock { display: block; padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }
+  .tray-copy { max-width: none; text-align: center; margin-bottom: 5px; }
+  .tray-copy strong { display: none; }
+  .tray-copy span { font-size: 10px; }
+  .shape-tray { width: 100%; max-width: 440px; margin: auto; gap: 2px; }
+  .tray-shape { padding: 3px 0; }
+  .tray-shape .tile { width: 40px; }
+  .tray-shape > span:last-child { font-size: 8px; }
+  .placement-guide strong { font-size: 11px; }
 }

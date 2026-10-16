@@ -4,12 +4,12 @@ import { TILE_ART, TILE_COLORS, TILE_FACE } from './tile-art.js';
 const $ = id => document.getElementById(id);
 function icon(t) {
   const art = TILE_ART[t.shape];
-  return `<svg viewBox="${art.viewBox}" aria-hidden="true"><path fill="${TILE_FACE}" d="${art.face}"/><path fill="${TILE_COLORS[t.color]}" d="${art.symbol}"/></svg>`;
+  return `<svg viewBox="${art.viewBox}" aria-hidden="true"><path fill="${TILE_FACE}" d="${art.face}"/><path fill="${TILE_COLORS[t.color] || '#e9e9dc'}" d="${art.symbol}"/></svg>`;
 }
 function tileMarkup(t, number = '') { return `<span class="tile">${icon(t)}${number ? `<span class="move-number">${number}</span>` : ''}</span>`; }
 let board = [], rack = [], bagEmpty = false, selected = { color: 0, shape: 0 }, erasing = false;
 let result = null, moveIndex = 0, worker = null, cellSize = 48, history = [];
-let panning = false, pickerTarget = null, pickerColor = 0, dragging = null, suppressClick = false;
+let panning = false, pickerTarget = null, pickerShape = null, trayShape = null, tileDrag = null, dragging = null, suppressClick = false;
 const storageKey = 'qwirkle-analyzer-v1';
 try {
   const saved = JSON.parse(localStorage.getItem(storageKey));
@@ -42,71 +42,101 @@ function renderAction() {
   if (move) $('preview-link').textContent = `${move.score} points · ${move.placements.length} outlined tiles · See move details ↓`;
 }
 function renderTools() {
-  $('active-tile').innerHTML = tileMarkup(selected);
-  $('selected-label').textContent = tileName(selected);
-  $('choose-tile').classList.toggle('active', !erasing && !panning);
   $('erase').setAttribute('aria-pressed', String(erasing));
   $('pan').setAttribute('aria-pressed', String(panning));
   $('board').classList.toggle('pan', panning);
-  $('board-help').textContent = panning ? 'Drag to explore · Placement paused' : erasing ? 'Tap a tile to remove it' : 'Tap to place · Drag to explore';
+  $('board-help').textContent = panning ? 'Drag to explore · Placement paused' : erasing ? 'Tap a tile to remove it' : 'Tap to add or recolor · Drag to explore';
+  $('tray-hint').textContent = trayShape === null ? 'Drag to the table or rack · Tap a tile to recolor' : `${SHAPES[trayShape]} selected · Tap a destination · Esc to cancel`;
+  for (const button of $('shape-tray').children) button.setAttribute('aria-pressed', String(Number(button.dataset.shape) === trayShape));
 }
-function openPicker(target = null) {
+function targetTile(target) {
+  return target.kind === 'rack' ? rack[target.index] : board.find(t => t.x === target.x && t.y === target.y);
+}
+function focusTarget(target) {
+  const el = target.kind === 'rack' ? $('rack').children[Math.min(target.index, 5)] : $('board').querySelector(`[data-x="${target.x}"][data-y="${target.y}"]`);
+  el?.focus({ preventScroll: true });
+}
+function openPicker(target) {
   pickerTarget = target;
-  pickerColor = (target !== null && rack[target] ? rack[target] : selected).color;
-  $('picker-title').textContent = target === null ? 'Choose a table tile' : `Choose rack tile ${target + 1}`;
-  $('picker-hint').textContent = target === null ? 'Choose a color, then a shape. Tap the table to place it.' : 'Choose a color, then tap a shape to add it to your rack.';
-  $('remove-rack-tile').hidden = target === null || !rack[target];
-  renderPalette();
+  const existing = targetTile(target);
+  pickerShape = existing?.shape ?? trayShape;
+  trayShape = null;
+  renderTools(); renderPalette();
   $('tile-picker').showModal();
+  (pickerShape === null ? $('palette') : $('colors')).querySelector('button')?.focus();
 }
 function chooseTile(t) {
+  const target = pickerTarget, current = targetTile(target);
   $('tile-picker').close();
-  if (pickerTarget !== null) {
-    const index = Math.min(pickerTarget, rack.length);
-    if (rack[index]?.color === t.color && rack[index]?.shape === t.shape) return;
-    remember(); rack[index] = t; changed(`${tileName(t)} added to your rack.`);
-    $('rack').children[index]?.focus({ preventScroll: true });
-  } else {
-    selected = t; erasing = false; panning = false; renderTools();
-  }
+  selected = t;
+  if (current?.color === t.color && current?.shape === t.shape) return;
+  remember();
+  if (target.kind === 'rack') rack[Math.min(target.index, rack.length)] = t;
+  else if (current) Object.assign(current, t);
+  else board.push({ x: target.x, y: target.y, ...t });
+  changed(`${tileName(t)} ${current ? 'updated' : 'added'}.`);
+  focusTarget(target);
 }
 function changed(message = '') {
   stopSearch(); result = null; moveIndex = 0; $('status').textContent = message; save(); render();
 }
 function preview() { return result?.moves?.[moveIndex]?.placements || []; }
 function renderPalette() {
-  $('colors').replaceChildren();
-  COLORS.forEach((name, color) => {
-    const button = document.createElement('button');
-    button.className = 'color-button';
-    button.style.setProperty('--swatch', TILE_COLORS[color]);
-    button.setAttribute('aria-label', name);
-    button.setAttribute('aria-pressed', String(pickerColor === color));
-    button.innerHTML = `<span aria-hidden="true" style="color:${color === 2 ? '#263e35' : '#fff'}">${pickerColor === color ? '✓' : ''}</span>`;
-    button.onclick = () => { pickerColor = color; renderPalette(); $('colors').children[color].focus(); };
-    $('colors').append(button);
-  });
-  $('color-name').textContent = COLORS[pickerColor];
-  $('palette').replaceChildren();
+  const existing = targetTile(pickerTarget), choosingShape = pickerShape === null;
+  $('picker-title').textContent = choosingShape ? 'Choose a shape' : 'Choose a color';
+  $('picker-hint').textContent = choosingShape ? '1 of 2 · Pick the shape on your tile.' : `${existing ? 'Recolor' : '2 of 2 ·'} ${SHAPES[pickerShape].toLowerCase()} · Tap a color to save.`;
+  $('palette').hidden = !choosingShape; $('colors').hidden = choosingShape;
+  $('change-shape').hidden = choosingShape;
+  $('remove-tile').hidden = !existing;
+  $('remove-tile').textContent = pickerTarget.kind === 'rack' ? 'Remove from rack' : 'Remove from table';
+  $('rack-order').hidden = pickerTarget.kind !== 'rack' || !existing;
+  $('rack-left').disabled = pickerTarget.index === 0;
+  $('rack-right').disabled = pickerTarget.index >= rack.length - 1;
+  $('palette').replaceChildren(); $('colors').replaceChildren();
   SHAPES.forEach((name, shape) => {
-    const t = { color: pickerColor, shape }, button = document.createElement('button');
-    const current = pickerTarget === null ? selected : rack[pickerTarget];
+    const button = document.createElement('button');
     button.className = 'shape-button';
-    button.innerHTML = `${tileMarkup(t)}<span>${name}</span>`;
-    button.setAttribute('aria-label', tileName(t));
-    button.setAttribute('aria-pressed', String(current?.color === t.color && current?.shape === shape));
-    button.onclick = () => chooseTile(t);
+    button.innerHTML = `${tileMarkup({ shape, color: -1 })}<span>${name}</span>`;
+    button.setAttribute('aria-label', name);
+    button.onclick = () => { pickerShape = shape; renderPalette(); $('colors').firstElementChild.focus(); };
     $('palette').append(button);
   });
+  if (choosingShape) return;
+  COLORS.forEach((name, color) => {
+    const button = document.createElement('button');
+    button.className = 'shape-button color-choice';
+    button.innerHTML = `${tileMarkup({ color, shape: pickerShape })}<span>${name}</span>`;
+    button.setAttribute('aria-label', name);
+    button.setAttribute('aria-pressed', String(existing?.color === color && existing?.shape === pickerShape));
+    button.onclick = () => chooseTile({ color, shape: pickerShape });
+    $('colors').append(button);
+  });
+}
+function reorderRack(from, to) {
+  to = Math.min(to, rack.length - 1);
+  if (from === to || to < 0 || from < 0 || from >= rack.length) return;
+  remember(); const [tile] = rack.splice(from, 1); rack.splice(to, 0, tile);
+  changed(`Rack tile moved to slot ${to + 1}.`);
+  focusTarget({ kind: 'rack', index: to });
 }
 function renderRack() {
   $('rack').replaceChildren();
   for (let i = 0; i < 6; i++) {
     const t = rack[i], button = document.createElement('button');
+    button.dataset.index = i;
     button.className = t ? 'tile' : 'rack-empty'; button.innerHTML = t ? icon(t) : '+';
     button.setAttribute('aria-label', t ? `Change ${tileName(t)} in rack slot ${i + 1}` : `Choose tile for rack slot ${i + 1}`);
     button.setAttribute('aria-haspopup', 'dialog');
-    button.onclick = () => openPicker(i);
+    if (t) {
+      button.title = 'Drag to reorder · Tap to recolor · Alt + arrow keys to move';
+      button.onpointerdown = event => startTileDrag(event, { kind: 'rack', index: i, tile: t });
+    }
+    button.onclick = event => { if (!suppressClick || !event.detail) openPicker({ kind: 'rack', index: i }); };
+    button.onkeydown = event => {
+      if (t && event.altKey && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+        event.preventDefault(); reorderRack(i, i + (event.key === 'ArrowLeft' ? -1 : 1));
+      }
+    };
     $('rack').append(button);
   }
   $('rack-count').textContent = `${rack.length} / 6`; $('bag-empty').checked = bagEmpty;
@@ -203,13 +233,10 @@ function editCell(event, remove = false) {
   if (panning || suppressClick) return;
   const cell = event.target.closest('.cell'); if (!cell) return;
   const x = Number(cell.dataset.x), y = Number(cell.dataset.y), i = board.findIndex(t => t.x === x && t.y === y);
-  if ((remove || erasing) && i < 0) return;
-  if (!remove && !erasing && i >= 0 && board[i].color === selected.color && board[i].shape === selected.shape) return;
-  remember();
-  if (i >= 0) board.splice(i, 1);
-  if (!remove && !erasing) board.push({ x, y, ...selected });
-  changed();
-  $('board').querySelector(`[data-x="${x}"][data-y="${y}"]`)?.focus({ preventScroll: true });
+  if (!remove && !erasing) { openPicker({ kind: 'board', x, y }); return; }
+  if (i < 0) return;
+  remember(); board.splice(i, 1); changed('Tile removed from the table.');
+  focusTarget({ kind: 'board', x, y });
 }
 $('board').addEventListener('focusin', event => {
   const cell = event.target.closest('.cell'); if (!cell) return;
@@ -230,21 +257,115 @@ $('board').onkeydown = event => {
   const target = $('board').querySelector(`[data-x="${Number(cell.dataset.x) + delta[0]}"][data-y="${Number(cell.dataset.y) + delta[1]}"]`);
   if (target) { cell.tabIndex = -1; target.tabIndex = 0; target.focus(); }
 };
-$('choose-tile').onclick = () => openPicker();
+$('change-shape').onclick = () => { pickerShape = null; renderPalette(); $('palette').firstElementChild.focus(); };
+$('tile-picker').addEventListener('close', () => focusTarget(pickerTarget));
 $('picker-close').onclick = () => $('tile-picker').close();
 $('tile-picker').onclick = event => {
   if (event.target !== $('tile-picker')) return;
   const rect = $('tile-picker').getBoundingClientRect();
   if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) $('tile-picker').close();
 };
-$('remove-rack-tile').onclick = () => {
-  const index = pickerTarget;
-  $('tile-picker').close(); remember(); rack.splice(index, 1); changed('Tile removed from your rack.');
-  $('rack').children[Math.min(index, 5)]?.focus({ preventScroll: true });
+$('remove-tile').onclick = () => {
+  const target = pickerTarget;
+  $('tile-picker').close(); remember();
+  if (target.kind === 'rack') rack.splice(target.index, 1);
+  else board = board.filter(t => t.x !== target.x || t.y !== target.y);
+  changed('Tile removed.'); focusTarget(target);
+};
+for (const [id, delta] of [['rack-left', -1], ['rack-right', 1]]) $(id).onclick = () => {
+  const index = pickerTarget.index; $('tile-picker').close(); reorderRack(index, index + delta);
 };
 $('erase').onclick = () => { erasing = !erasing; panning = false; renderTools(); };
 $('pan').onclick = () => { panning = !panning; erasing = false; renderTools(); };
 $('preview-link').onclick = () => reveal('results');
+// Pointer events support the same drag interaction with mouse, pen, and touch.
+window.addEventListener('pointerdown', () => { suppressClick = false; }, true);
+function startTileDrag(event, source) {
+  if (event.button !== 0 || !event.isPrimary) return;
+  tileDrag = { ...source, pointerId: event.pointerId, element: event.currentTarget,
+    startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY, moved: false };
+  event.currentTarget.setPointerCapture(event.pointerId);
+}
+function dropTarget(x, y, source) {
+  const hit = document.elementFromPoint(x, y);
+  const slot = hit?.closest('#rack [data-index]');
+  if (slot) return { kind: 'rack', index: Number(slot.dataset.index), element: slot };
+  const cell = hit?.closest('#board .cell');
+  if (cell && source.kind === 'shape') return { kind: 'board', x: Number(cell.dataset.x), y: Number(cell.dataset.y), element: cell };
+  return null;
+}
+function updateDragTarget() {
+  const d = tileDrag;
+  d.target?.element.classList.remove('drop-target');
+  d.target = dropTarget(d.x, d.y, d);
+  d.target?.element.classList.add('drop-target');
+  d.ghost.classList.toggle('can-drop', !!d.target);
+  d.ghost.style.transform = `translate(${d.x - 28}px, ${d.y - 66}px)`;
+}
+function dragScroll() {
+  const d = tileDrag; if (!d?.moved) return;
+  const viewport = $('board-viewport'), rect = viewport.getBoundingClientRect();
+  const speed = (value, min, max) => value < min + 35 ? -8 : value > max - 35 ? 8 : 0;
+  if (d.kind === 'shape' && d.x > rect.left && d.x < rect.right && d.y > rect.top && d.y < rect.bottom) {
+    viewport.scrollLeft += speed(d.x, rect.left, rect.right);
+    viewport.scrollTop += speed(d.y, rect.top, rect.bottom);
+  }
+  // Scroll the page above the fixed tray, leaving the drag source within reach.
+  const bottom = document.querySelector('.shape-dock').getBoundingClientRect().top;
+  window.scrollBy(0, d.y < 65 ? -10 : d.y > bottom - 35 ? 10 : 0);
+  updateDragTarget(); d.frame = requestAnimationFrame(dragScroll);
+}
+window.addEventListener('pointermove', event => {
+  const d = tileDrag; if (!d || d.pointerId !== event.pointerId) return;
+  d.x = event.clientX; d.y = event.clientY;
+  if (!d.moved && Math.hypot(d.x - d.startX, d.y - d.startY) < 7) return;
+  event.preventDefault(); suppressClick = true;
+  if (!d.moved) {
+    d.moved = true; d.ghost = document.createElement('div'); d.ghost.className = 'drag-ghost';
+    d.ghost.innerHTML = tileMarkup(d.tile); document.body.append(d.ghost);
+    d.element.classList.add('drag-source'); document.body.classList.add('tile-dragging');
+    d.frame = requestAnimationFrame(dragScroll);
+  }
+  updateDragTarget();
+}, { passive: false });
+function finishTileDrag(commit = false) {
+  const d = tileDrag; if (!d) return;
+  tileDrag = null; cancelAnimationFrame(d.frame); d.ghost?.remove();
+  d.target?.element.classList.remove('drop-target'); d.element.classList.remove('drag-source');
+  document.body.classList.remove('tile-dragging');
+  if (d.element.hasPointerCapture(d.pointerId)) d.element.releasePointerCapture(d.pointerId);
+  if (!d.moved || !commit) return;
+  const target = d.target;
+  if (!target) { $('tray-hint').textContent = 'Drop cancelled · Use a table square or rack slot'; return; }
+  trayShape = null; erasing = false; panning = false;
+  if (d.kind === 'rack') { reorderRack(d.index, target.index); return; }
+  const old = targetTile(target);
+  if (old?.shape === d.tile.shape && old?.color === d.tile.color) return;
+  remember();
+  if (target.kind === 'rack') rack[Math.min(target.index, rack.length)] = { ...d.tile };
+  else if (old) Object.assign(old, d.tile);
+  else board.push({ x: target.x, y: target.y, ...d.tile });
+  changed(`${tileName(d.tile)} placed. Tap it to choose another color.`);
+  focusTarget(target);
+}
+window.addEventListener('pointerup', event => { if (tileDrag?.pointerId === event.pointerId) finishTileDrag(true); });
+window.addEventListener('pointercancel', () => finishTileDrag());
+window.addEventListener('blur', () => finishTileDrag());
+window.addEventListener('keydown', event => {
+  if (event.key === 'Escape') { finishTileDrag(); trayShape = null; renderTools(); }
+});
+SHAPES.forEach((name, shape) => {
+  const button = document.createElement('button'); button.className = 'tray-shape'; button.dataset.shape = shape;
+  button.innerHTML = `${tileMarkup({ color: -1, shape })}<span>${name}</span>`;
+  button.setAttribute('aria-label', `Pick ${name.toLowerCase()}`);
+  button.setAttribute('aria-pressed', 'false');
+  button.onpointerdown = event => startTileDrag(event, { kind: 'shape', tile: { shape, color: selected.color } });
+  button.onclick = event => {
+    if (suppressClick && event.detail) return;
+    trayShape = trayShape === shape ? null : shape; erasing = false; panning = false; renderTools();
+  };
+  $('shape-tray').append(button);
+});
 // Native touch scrolling keeps taps distinct from swipes. Mouse dragging does the same.
 $('board-viewport').addEventListener('pointerdown', event => {
   suppressClick = false;
@@ -297,5 +418,5 @@ $('analyze').onclick = () => {
   } catch { stopSearch(); result = { errors: ['The search could not start. Reload the page and try again.'], moves: [] }; renderResults(); reveal('results'); }
 };
 let resizeFrame;
-new ResizeObserver(() => { cancelAnimationFrame(resizeFrame); resizeFrame = requestAnimationFrame(() => renderBoard(true)); }).observe($('board-viewport'));
+new ResizeObserver(() => { cancelAnimationFrame(resizeFrame); resizeFrame = requestAnimationFrame(() => { if (!tileDrag) renderBoard(true); }); }).observe($('board-viewport'));
 render(); requestAnimationFrame(fitBoard);

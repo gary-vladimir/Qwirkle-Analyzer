@@ -21,13 +21,13 @@
       <section id="table" class="panel board-panel" aria-labelledby="table-title" tabindex="-1">
         <div class="section-title"><h2 id="table-title"><span class="step">01</span> The table <span id="board-count" class="pill">0 tiles</span></h2><button id="undo" class="quiet-button" disabled title="Undo last edit">↶ <span>Undo</span></button></div>
         <div class="edit-tools">
-          <button id="choose-tile" class="tile-tool" aria-haspopup="dialog"><span id="active-tile"></span><span><small>PLACE TILE</small><strong id="selected-label"></strong></span><span class="chevron" aria-hidden="true">⌄</span></button>
+          <div class="placement-guide"><strong>Tap a square to add a tile</strong><span>Shape first. Color next.</span></div>
           <button id="erase" class="tool-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 3 6 6-11 11H6l-4-4L15 3ZM6 12l6 6M10 20h11"/></svg><span>Erase</span></button>
           <button id="pan" class="tool-button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg><span>Pan</span></button>
         </div>
         <div class="board-stage">
           <div id="board-viewport" class="board-viewport"><div id="board" class="board" aria-label="Board editor"></div></div>
-          <div id="board-empty" class="board-empty"><strong>A fresh table.</strong><span>Choose a tile, then tap a square to begin.</span></div>
+          <div id="board-empty" class="board-empty"><strong>A fresh table.</strong><span>Tap any square. Choose a shape, then its color.</span></div>
           <div class="zoom-controls" aria-label="Board view controls"><button id="zoom-out" aria-label="Zoom out">−</button><span id="zoom-level">100%</span><button id="zoom-in" aria-label="Zoom in">+</button><button id="fit" aria-label="Fit table to view" title="Fit table to view">⌖</button></div>
         </div>
         <div class="board-footer"><span id="board-help">Tap to place · Drag to explore</span><button id="clear" class="quiet-button">Clear table</button></div>
@@ -36,7 +36,7 @@
       <aside class="side-column">
         <section id="rack-panel" class="panel rack-panel" aria-labelledby="rack-title">
           <div class="section-title"><h2 id="rack-title"><span class="step">02</span> Your rack</h2><span id="rack-count" class="pill">0 / 6</span></div>
-          <p class="hint">Tap a slot to choose or change a tile.</p>
+          <p class="hint">Tap to add or recolor. Drag tiles to reorder.</p>
           <div id="rack" class="rack" aria-label="Your tiles"></div>
           <label class="checkbox"><input id="bag-empty" type="checkbox"><span>Draw bag is empty<small>Include the 6-point finishing bonus</small></span></label>
         </section>
@@ -51,13 +51,17 @@
   <dialog id="tile-picker" aria-labelledby="picker-title" aria-describedby="picker-hint">
     <div class="sheet-handle" aria-hidden="true"></div>
     <div class="section-title"><div><div class="eyebrow">MAKE IT A MATCH</div><h2 id="picker-title">Choose a tile</h2></div><button id="picker-close" class="icon-button" aria-label="Close tile picker">×</button></div>
-    <p id="picker-hint" class="hint">Choose a color, then tap a shape.</p>
-    <div class="picker-label">1. Color <span id="color-name"></span></div>
-    <div id="colors" class="colors" aria-label="Tile colors"></div>
-    <div class="picker-label">2. Shape</div>
+    <p id="picker-hint" class="hint">Choose a shape, then its color.</p>
     <div id="palette" class="palette" aria-label="Tile shapes"></div>
-    <button id="remove-rack-tile" class="remove-button" hidden>Remove from rack</button>
+    <div id="colors" class="colors" aria-label="Tile colors" hidden></div>
+    <button id="change-shape" class="quiet-button" hidden>← Change shape</button>
+    <div id="rack-order" class="rack-order" hidden><button id="rack-left" class="quiet-button">← Move left</button><button id="rack-right" class="quiet-button">Move right →</button></div>
+    <button id="remove-tile" class="remove-button" hidden>Remove tile</button>
   </dialog>
+  <div class="shape-dock" aria-label="Shape tray">
+    <div class="tray-copy"><strong>Pick up a shape</strong><span id="tray-hint">Drag to the table or rack · Tap a tile to recolor</span></div>
+    <div id="shape-tray" class="shape-tray" aria-label="Drag a shape or select it, then tap a destination"></div>
+  </div>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
